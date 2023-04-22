@@ -1,0 +1,99 @@
+version: '3.7'
+
+volumes:
+  prometheus_data: {}
+  grafana_data: {}
+networks:
+  app_network:
+    driver: bridge
+services:
+  application:
+    build:
+      dockerfile: Dockerfile
+    image: chernyshov/http-hello-word:v1.0.0
+    container_name: app-http-hello-word
+    expose:
+      - 7001
+    ports:
+      - 7001:7001
+    healthcheck:
+      test: curl --fail http://localhost:7001 || exit 1
+      interval: 10s
+      retries: 3
+      timeout: 1s
+      start_period: 5s
+
+
+  prometheus:
+    image: prom/prometheus:v2.43.0
+    volumes:
+      - ./prometheus/:/etc/prometheus/
+      - prometheus_data:/prometheus
+    container_name: app_prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    expose:
+      - 9090
+    ports:
+      - 9090:9090
+    networks:
+      - app_network
+    restart: always
+    labels:
+      org.laber-schema.group: "monitoring for application containers"
+
+  node-exporter:
+    image: prom/node-exporter:v1.5.0
+    container_name: app_node-exporter
+    expose:
+      - 9100
+    ports:
+      - 9100:9100
+    networks:
+      - app_network
+    restart: always
+    labels:
+      org.laber-schema.group: "monitoring for application containers"
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor
+    container_name: app_cadvisor
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    expose:
+      - 7100
+    ports:
+      - 7100:8080
+    networks:
+      - app_network
+    restart: always
+    labels:
+      org.laber-schema.group: "monitoring for application containers"
+
+  grafana:
+    image: grafana/grafana:9.4.7
+    container_name: app_grafana
+    volumes:
+      - ./grafana/provisioning/dashboards.yml:/etc/grafana/provisioning/dashboards/provisioning-dashboards.yaml:ro
+      - ./grafana/provisioning/datasources.yml:/etc/grafana/provisioning/datasources/provisioning-datasources.yaml:ro
+      - ./grafana/dashboards/node-metrics.json:/var/lib/grafana/dashboards/node-metrics.json:ro
+      - ./grafana/dashboards/container-metrics.json:/var/lib/grafana/dashboards/container-metrics.json:ro
+      - grafana_data:/var/lib/grafana
+    env_file:
+      - ./grafana/config
+    expose:
+      - 3000
+    ports:
+      - 3000:3000
+    networks:
+      - app_network
+    restart: always
+    labels:
+      org.laber-schema.group: "monitoring for application containers"

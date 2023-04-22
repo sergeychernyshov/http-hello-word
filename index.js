@@ -4,11 +4,9 @@ const app = express()
 
 const port = process.env.PORT
 
-app.get('/', (req, res) => {
-    res.statusCode = 200
-    res.setHeader('Content-Type', 'text/plain')
-    res.end('Hello World')
-})
+
+app.use('/', require('./routes/hello-word'));
+app.use('/health-check', require('./routes/health-check'));
 
 app.listen(port, () => {
     console.log(`Start app, port ${port}`)
