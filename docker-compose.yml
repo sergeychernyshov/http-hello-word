@@ -10,6 +10,7 @@ services:
   application:
     build:
       dockerfile: Dockerfile
+      target: production
     image: chernyshov/http-hello-word:v1.0.0
     container_name: app-http-hello-word
     expose:
